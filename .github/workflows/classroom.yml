@@ -42,7 +42,7 @@ jobs:
           };
           EOF
 
-      - name: Create Jest tests
+      - name: Create Jest tests (strict numeric checks + edge cases)
         run: |
           mkdir -p __tests__
           cat > __tests__/script.test.cjs <<'EOF'
@@ -82,16 +82,25 @@ jobs:
             return dom;
           }
 
-          function trigger(window, element, val) {
-            element.value = String(val);
-            element.dispatchEvent(new window.Event('input', { bubbles: true }));
-            element.dispatchEvent(new window.Event('change', { bubbles: true }));
+          function setAgeAndTrigger(window, document, ageVal) {
+            const input = document.getElementById('age');
+            if (!input) return false;
+            input.value = String(ageVal);
+            input.dispatchEvent(new window.Event('input', { bubbles: true }));
+            input.dispatchEvent(new window.Event('change', { bubbles: true }));
+            try { window.eval('if (typeof calculate==="function"){ calculate(); }'); } catch {}
+            if (typeof window.calculate === 'function') window.calculate();
+            return true;
           }
 
-          function getOutput(document) {
+          function readPriceNumber(document) {
             const el = document.getElementById('priceOutput');
-            if (!el) return '';
-            return (el.textContent || '').trim();
+            if (!el) return NaN;
+            const raw = (el.textContent || el.innerText || '').trim();
+            // Extract the FIRST number token (e.g., "$20.00" -> 20; "Your price: 20" -> 20)
+            const m = raw.match(/-?\d+(?:\.\d+)?/);
+            if (!m) return NaN;
+            return Number(m[0]);
           }
 
           describe("Movie Ticket Price Calculator", () => {
@@ -108,22 +117,41 @@ jobs:
               expect(document.getElementById('priceOutput')).not.toBeNull();
             });
 
-            const cases = [
-              { age: 5, expected: 7, label: "child" },
-              { age: 15, expected: 12, label: "student" },
-              { age: 30, expected: 20, label: "adult" },
-              { age: 70, expected: 12, label: "senior" },
+            // Core bracket tests (one per bracket)
+            const coreCases = [
+              { age: 5,   expected: 7,  label: "child" },
+              { age: 15,  expected: 12, label: "student" },
+              { age: 30,  expected: 20, label: "adult" },
+              { age: 70,  expected: 12, label: "senior" },
             ];
 
-            for (const c of cases) {
+            for (const c of coreCases) {
               test(`displays correct price for a ${c.label}`, async () => {
-                const input = document.getElementById('age');
-                expect(input).not.toBeNull();
-                trigger(window, input, c.age);
-                try { window.eval('if (typeof calculate==="function"){ calculate(); }'); } catch {}
+                expect(setAgeAndTrigger(window, document, c.age)).toBe(true);
                 await wait();
-                const output = getOutput(document);
-                expect(output).toMatch(String(c.expected));
+                const price = readPriceNumber(document);
+                expect(Number.isNaN(price)).toBe(false);
+                expect(price).toBe(c.expected);
+              });
+            }
+
+            // Edge boundaries to catch off-by-one errors
+            const edgeCases = [
+              { age: 12, expected: 7,  note: "max child" },
+              { age: 13, expected: 12, note: "min student" },
+              { age: 17, expected: 12, note: "max student" },
+              { age: 18, expected: 20, note: "min adult" },
+              { age: 64, expected: 20, note: "max adult" },
+              { age: 65, expected: 12, note: "min senior" },
+            ];
+
+            for (const e of edgeCases) {
+              test(`edge case age=${e.age} -> $${e.expected} (${e.note})`, async () => {
+                expect(setAgeAndTrigger(window, document, e.age)).toBe(true);
+                await wait();
+                const price = readPriceNumber(document);
+                expect(Number.isNaN(price)).toBe(false);
+                expect(price).toBe(e.expected);
               });
             }
           });
@@ -153,50 +181,49 @@ jobs:
           const failed = r.numFailedTests ?? 0;
           const runtimeErrSuites = r.numRuntimeErrorTestSuites ?? 0;
 
+          // Flatten all assertion results
           const all = (r.testResults || []).flatMap(tr => tr.assertionResults || []);
-          function isPassed(label) {
-            return all.some(ar => {
-              const t = ar.title || '';
-              const f = ar.fullName || '';
-              const matched = t === label || f.endsWith(label) || f.includes(' ' + label);
-              return matched && ar.status === 'passed';
-            });
+          const textOf = ar => (ar.title || ar.fullName || '').toLowerCase();
+
+          // Robust keyword matcher
+          function passedByKeyword(keyword) {
+            keyword = keyword.toLowerCase();
+            return all.some(ar => textOf(ar).includes(keyword) && ar.status === 'passed');
           }
 
           const checks = [
-            ["has required elements", "Your page must include inputs #age and #priceOutput."],
-            ["displays correct price for a child",   "Make sure age 0–12 returns $7."],
-            ["displays correct price for a student", "Make sure age 13–17 returns $12."],
-            ["displays correct price for an adult",  "Make sure age 18–64 returns $20."],
-            ["displays correct price for a senior",  "Make sure age 65+ returns $12."]
+            {label: 'has required elements',               keyword: 'has required elements', hint: 'Your page must include inputs #age and #priceOutput.'},
+            {label: 'displays correct price for a child',  keyword: 'child',                 hint: 'Make sure age 0–12 returns $7.'},
+            {label: 'displays correct price for a student',keyword: 'student',               hint: 'Make sure age 13–17 returns $12.'},
+            {label: 'displays correct price for an adult', keyword: 'adult',                 hint: 'Make sure age 18–64 returns $20.'},
+            {label: 'displays correct price for a senior', keyword: 'senior',                hint: 'Make sure age 65+ returns $12.'}
           ];
 
-          const checkIcon = ok => ok ? '\u2705' : '\u274C';
-          const mark = (ok, label) => `${checkIcon(ok)} ${label}`;
+          const checkIcon = ok => (ok ? '✅' : '❌');
 
           const out = [];
-          out.push(`# Unit 8.3 Autograder Summary`);
+          out.push('# Unit 8.3 Autograder Summary');
           out.push(`**Passed:** ${passed}/${total}  ·  **Failed:** ${failed}`);
 
           if (total === 0 || runtimeErrSuites > 0) {
             out.push('');
-            out.push(`> ⚠️ No tests ran. This usually means required files weren't found (e.g., index.html).`);
+            out.push('> ⚠️ No tests ran. This usually means required files were not found (e.g., index.html).');
           }
 
           out.push('');
-          out.push(`## What you got right / need to fix`);
+          out.push('## What you got right / need to fix');
 
-          for (const [name, hint] of checks) {
-            const ok = isPassed(name);
-            out.push(mark(ok, name));
+          for (const {label, keyword, hint} of checks) {
+            const ok = passedByKeyword(keyword);
+            out.push(`${checkIcon(ok)} ${label}`);
             if (!ok) out.push(`   - Hint: ${hint}`);
           }
 
           out.push('');
-          out.push(`### Reminders`);
-          out.push(`- Use an input with id **age** and a button that calls \`calculate()\`.`);
-          out.push(`- Display the result in an element with id **priceOutput**.`);
-          out.push(`- Brackets: 0–12 → $7, 13–17 → $12, 18–64 → $20, 65+ → $12.`);
+          out.push('### Reminders');
+          out.push('- Use an input with id **age** and a button that calls `calculate()`.');
+          out.push('- Display the result in an element with id **priceOutput**.');
+          out.push('- Brackets: 0–12 → $7, 13–17 → $12, 18–64 → $20, 65+ → $12.');
 
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n'));
           NODE
@@ -212,10 +239,10 @@ jobs:
           const runtimeErrSuites = r.numRuntimeErrorTestSuites ?? 0;
 
           if (failed > 0 || runtimeErrSuites > 0 || total === 0) {
-            console.error(`Failing job: failedTests=${failed}, runtimeErrorSuites=${runtimeErrSuites}, totalTests=${total}`);
+            console.error('Failing job: failedTests=' + failed + ', runtimeErrorSuites=' + runtimeErrSuites + ', totalTests=' + total);
             process.exit(1);
           } else {
-            console.log(`All tests passed: failedTests=${failed}, runtimeErrorSuites=${runtimeErrSuites}, totalTests=${total}`);
+            console.log('All tests passed: failedTests=' + failed + ', runtimeErrorSuites=' + runtimeErrSuites + ', totalTests=' + total);
             process.exit(0);
           }
           NODE
