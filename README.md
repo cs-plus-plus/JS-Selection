@@ -1,4 +1,4 @@
-# Unit 8.3 – Iteration: Movie Ticket Price Calculator 🎬
+# Unit 8.3 – Selection & Logic: Movie Ticket Price Calculator 🎬
 
 ## Overview
 In this project, you will write a JavaScript program that calculates **movie ticket prices** based on the user’s age.  
@@ -11,7 +11,6 @@ By the end of this lesson, you should be able to:
 - Use variables and conditional logic to implement decision-making in JavaScript.
 - Capture user input from a text field using `document.getElementById()`.
 - Update the DOM dynamically to display results.
-- Understand basic iteration concepts through repetitive checking and validation.
 
 ---
 
