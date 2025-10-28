@@ -1,248 +1,294 @@
-name: "Classroom Autograder – Unit 8.3: Iteration (Movie Ticket Prices)"
+name: autograde
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   autograde:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install test dependencies
+      # === Install Jest (node env only for prompts/alerts) ===
+      - name: Install test deps
         run: |
-          npm install --save-dev jest@29 jsdom@21 jest-environment-jsdom@29
+          npm init -y >/dev/null 2>&1 || true
+          npm install --save-dev jest@29
 
-      - name: Create Jest setup
-        run: |
-          cat > jest.setup.cjs <<'EOF'
-          const { TextEncoder, TextDecoder } = require('util');
-          if (typeof global.TextEncoder === 'undefined') global.TextEncoder = TextEncoder;
-          if (typeof global.TextDecoder === 'undefined') global.TextDecoder = TextDecoder;
-          EOF
-
-      - name: Create Jest config
+      - name: Write jest config
         run: |
           cat > jest.config.cjs <<'EOF'
           module.exports = {
-            testEnvironment: 'jsdom',
-            setupFiles: ['<rootDir>/jest.setup.cjs'],
-            testMatch: [
-              '**/__tests__/**/*.test.cjs',
-              '**/?(*.)+(spec|test).[jt]s?(x)'
-            ]
+            testEnvironment: 'node',
+            testMatch: ['**/__tests__/**/*.test.cjs']
           };
           EOF
 
-      - name: Create Jest tests (strict numeric checks + edge cases)
+      - name: Write tests
         run: |
           mkdir -p __tests__
-          cat > __tests__/script.test.cjs <<'EOF'
+          cat > __tests__/selection-8_3.test.cjs <<'EOF'
           const fs = require('fs');
           const path = require('path');
-          const { JSDOM, VirtualConsole } = require('jsdom');
 
-          function findIndexPath() {
-            const candidates = ['index.html', 'public/index.html', 'src/index.html', 'docs/index.html'];
-            for (const c of candidates) if (fs.existsSync(c)) return c;
-            return null;
+          function loadStudent({promptAnswer=null} = {}) {
+            const studentPath = path.resolve('script.js');
+            if (!fs.existsSync(studentPath)) throw new Error('script.js not found');
+            delete require.cache[studentPath];
+
+            const calls = { alerts: [], prompts: [] };
+            global.prompt = (msg='') => { calls.prompts.push(String(msg)); return promptAnswer; };
+            global.alert = (msg='') => { calls.alerts.push(String(msg)); };
+
+            const mod = require(studentPath);
+
+            delete global.prompt;
+            delete global.alert;
+
+            return { mod, calls };
           }
 
-          async function wait(ms = 25) {
-            return new Promise(res => setTimeout(res, ms));
+          function expectMsgLike(msg, cat, price) {
+            expect(new RegExp(cat, 'i').test(msg)).toBe(true);
+            expect(new RegExp(`\\$\\s*${price}\\b`).test(msg)).toBe(true);
           }
 
-          async function loadDOM() {
-            const indexPath = findIndexPath();
-            if (!indexPath) throw new Error("index.html not found");
+          describe('Unit 8.3 – Selection (prompts & alerts)', () => {
 
-            const baseDir = path.dirname(path.resolve(indexPath));
-            const baseUrl = 'file://' + baseDir.replace(/\\+/g, '/') + '/';
-            const vconsole = new VirtualConsole();
-            vconsole.on('error', () => {});
-
-            const dom = await JSDOM.fromFile(indexPath, {
-              url: baseUrl,
-              runScripts: 'dangerously',
-              resources: 'usable',
-              pretendToBeVisual: true,
-              virtualConsole: vconsole
+            test('t_required: script exports ticketPrice and start', () => {
+              const { mod } = loadStudent();
+              expect(typeof mod.ticketPrice).toBe('function');
+              expect(typeof mod.start).toBe('function');
             });
 
-            await new Promise(res => dom.window.addEventListener('load', res, { once: true }));
-            await wait();
-            return dom;
-          }
-
-          function setAgeAndTrigger(window, document, ageVal) {
-            const input = document.getElementById('age');
-            if (!input) return false;
-            input.value = String(ageVal);
-            input.dispatchEvent(new window.Event('input', { bubbles: true }));
-            input.dispatchEvent(new window.Event('change', { bubbles: true }));
-            try { window.eval('if (typeof calculate==="function"){ calculate(); }'); } catch {}
-            if (typeof window.calculate === 'function') window.calculate();
-            return true;
-          }
-
-          function readPriceNumber(document) {
-            const el = document.getElementById('priceOutput');
-            if (!el) return NaN;
-            const raw = (el.textContent || el.innerText || '').trim();
-            // Extract the FIRST number token (e.g., "$20.00" -> 20; "Your price: 20" -> 20)
-            const m = raw.match(/-?\d+(?:\.\d+)?/);
-            if (!m) return NaN;
-            return Number(m[0]);
-          }
-
-          describe("Movie Ticket Price Calculator", () => {
-            let dom, window, document;
-
-            beforeEach(async () => {
-              dom = await loadDOM();
-              window = dom.window;
-              document = window.document;
+            test('t_selection_logic: ticketPrice(age) returns correct numbers', () => {
+              const { mod } = loadStudent();
+              const tp = mod.ticketPrice;
+              expect(tp(0)).toBe(7);
+              expect(tp(12)).toBe(7);
+              expect(tp(13)).toBe(12);
+              expect(tp(17)).toBe(12);
+              expect(tp(18)).toBe(20);
+              expect(tp(64)).toBe(20);
+              expect(tp(65)).toBe(12);
             });
 
-            test("has required elements", () => {
-              expect(document.getElementById('age')).not.toBeNull();
-              expect(document.getElementById('priceOutput')).not.toBeNull();
+            test('t_prompt_alert_small: start() prompts once and alerts Child: $7', () => {
+              const { mod, calls } = loadStudent({ promptAnswer: '5' });
+              mod.start();
+              expect(calls.prompts.length).toBeGreaterThan(0);
+              expect(calls.alerts.length).toBeGreaterThan(0);
+              expectMsgLike(calls.alerts[0], 'Child', 7);
             });
 
-            // Core bracket tests (one per bracket)
-            const coreCases = [
-              { age: 5,   expected: 7,  label: "child" },
-              { age: 15,  expected: 12, label: "student" },
-              { age: 30,  expected: 20, label: "adult" },
-              { age: 70,  expected: 12, label: "senior" },
-            ];
+            test('t_prompt_alert_adult: start() prompts once and alerts Adult: $20', () => {
+              const { mod, calls } = loadStudent({ promptAnswer: '35' });
+              mod.start();
+              expect(calls.prompts.length).toBeGreaterThan(0);
+              expect(calls.alerts.length).toBeGreaterThan(0);
+              expectMsgLike(calls.alerts[0], 'Adult', 20);
+            });
 
-            for (const c of coreCases) {
-              test(`displays correct price for a ${c.label}`, async () => {
-                expect(setAgeAndTrigger(window, document, c.age)).toBe(true);
-                await wait();
-                const price = readPriceNumber(document);
-                expect(Number.isNaN(price)).toBe(false);
-                expect(price).toBe(c.expected);
-              });
-            }
-
-            // Edge boundaries to catch off-by-one errors
-            const edgeCases = [
-              { age: 12, expected: 7,  note: "max child" },
-              { age: 13, expected: 12, note: "min student" },
-              { age: 17, expected: 12, note: "max student" },
-              { age: 18, expected: 20, note: "min adult" },
-              { age: 64, expected: 20, note: "max adult" },
-              { age: 65, expected: 12, note: "min senior" },
-            ];
-
-            for (const e of edgeCases) {
-              test(`edge case age=${e.age} -> $${e.expected} (${e.note})`, async () => {
-                expect(setAgeAndTrigger(window, document, e.age)).toBe(true);
-                await wait();
-                const price = readPriceNumber(document);
-                expect(Number.isNaN(price)).toBe(false);
-                expect(price).toBe(e.expected);
-              });
-            }
+            test('t_invalid: bad input yields Invalid input', () => {
+              const bads = ['abc', '', '  ', '-1', null];
+              for (const ans of bads) {
+                const { mod, calls } = loadStudent({ promptAnswer: ans });
+                mod.start();
+                expect(calls.alerts.length).toBeGreaterThan(0);
+                expect(/invalid input/i.test(calls.alerts[0])).toBe(true);
+              }
+            });
           });
           EOF
 
-      - name: Run tests and create JSON results
-        id: jest
-        continue-on-error: true
-        run: npx jest --runInBand --verbose --json --outputFile=jest-results.json
-
-      - name: Upload raw results
-        if: always()
-        uses: actions/upload-artifact@v4
+      # === Individual graded runs ===
+      - id: t_required
+        name: required exports exist
+        uses: classroom-resources/autograding-command-grader@v1
         with:
-          name: jest-results
-          path: jest-results.json
+          test-name: required exports exist
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "^t_required:"
+          timeout: 60
+          max-score: 20
 
-      - name: Summarize results for students (no solutions shown)
-        if: always()
+      - id: t_selection
+        name: selection logic (ticketPrice)
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: selection logic (ticketPrice)
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "^t_selection_logic:"
+          timeout: 60
+          max-score: 40
+
+      - id: t_small
+        name: prompt/alert small (Child $7)
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: prompt/alert small (Child $7)
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "^t_prompt_alert_small:"
+          timeout: 60
+          max-score: 15
+
+      - id: t_adult
+        name: prompt/alert adult (Adult $20)
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: prompt/alert adult (Adult $20)
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "^t_prompt_alert_adult:"
+          timeout: 60
+          max-score: 15
+
+      - id: t_invalid
+        name: invalid input handled
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: invalid input handled
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "^t_invalid:"
+          timeout: 60
+          max-score: 10
+
+      # (Optional) Peek at raw outputs
+      - name: Debug (peek runner outputs)
+        shell: bash
+        run: |
+          echo "::group::Raw grader outputs (base64)"
+          echo "t_required  => ${{ steps.t_required.outputs.result }}"
+          echo "t_selection => ${{ steps.t_selection.outputs.result }}"
+          echo "t_small     => ${{ steps.t_small.outputs.result }}"
+          echo "t_adult     => ${{ steps.t_adult.outputs.result }}"
+          echo "t_invalid   => ${{ steps.t_invalid.outputs.result }}"
+          echo "::endgroup::"
+
+      # === Build & Publish Summary (base64 + nested points from tests[].score) ===
+      - name: Build & Publish Summary
+        env:
+          R_REQUIRED:  ${{ steps.t_required.outputs.result }}
+          R_SELECTION: ${{ steps.t_selection.outputs.result }}
+          R_SMALL:     ${{ steps.t_small.outputs.result }}
+          R_ADULT:     ${{ steps.t_adult.outputs.result }}
+          R_INVALID:   ${{ steps.t_invalid.outputs.result }}
+        shell: bash
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const r = JSON.parse(fs.readFileSync('jest-results.json','utf8'));
 
-          const total  = r.numTotalTests ?? 0;
-          const passed = r.numPassedTests ?? 0;
-          const failed = r.numFailedTests ?? 0;
-          const runtimeErrSuites = r.numRuntimeErrorTestSuites ?? 0;
-
-          // Flatten all assertion results
-          const all = (r.testResults || []).flatMap(tr => tr.assertionResults || []);
-          const textOf = ar => (ar.title || ar.fullName || '').toLowerCase();
-
-          // Robust keyword matcher
-          function passedByKeyword(keyword) {
-            keyword = keyword.toLowerCase();
-            return all.some(ar => textOf(ar).includes(keyword) && ar.status === 'passed');
+          function deepParse(x) {
+            let v = x;
+            for (let i = 0; i < 3; i++) {
+              if (typeof v !== 'string') break;
+              const s = v.trim();
+              if (!s) return {};
+              const looksJSON = (s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'));
+              if (looksJSON) {
+                try { v = JSON.parse(s); continue; } catch {}
+              }
+              break;
+            }
+            return (typeof v === 'object' && v) ? v : {};
           }
 
-          const checks = [
-            {label: 'has required elements',               keyword: 'has required elements', hint: 'Your page must include inputs #age and #priceOutput.'},
-            {label: 'displays correct price for a child',  keyword: 'child',                 hint: 'Make sure age 0–12 returns $7.'},
-            {label: 'displays correct price for a student',keyword: 'student',               hint: 'Make sure age 13–17 returns $12.'},
-            {label: 'displays correct price for an adult', keyword: 'adult',                 hint: 'Make sure age 18–64 returns $20.'},
-            {label: 'displays correct price for a senior', keyword: 'senior',                hint: 'Make sure age 65+ returns $12.'}
+          function parseResult(raw) {
+            if (!raw) return {};
+            // Try base64 -> utf8 -> JSON
+            try {
+              const dec = Buffer.from(raw, 'base64').toString('utf8');
+              const obj = deepParse(dec);
+              if (Object.keys(obj).length) return obj;
+            } catch {}
+            // Try JSON directly
+            const obj2 = deepParse(raw);
+            if (Object.keys(obj2).length) return obj2;
+            return {};
+          }
+
+          function getPoints(obj) {
+            // top-level
+            let p = obj.totalPoints ?? obj.total_points ?? obj.points ?? obj.score ?? 0;
+            let m = obj.maxPoints   ?? obj.max_points   ?? obj.maxScore ?? obj.max_score ?? obj.outOf ?? obj.maximum ?? 0;
+
+            p = Number(p) || 0;
+            m = Number(m) || 0;
+
+            // If p is missing but tests exist, sum their scores
+            if (p === 0 && Array.isArray(obj.tests) && obj.tests.length) {
+              p = obj.tests.reduce((acc, t) => acc + (Number(t.score) || 0), 0);
+            }
+            // If m is missing but we have max_score or per-test max_score, derive it
+            if (m === 0) {
+              if (typeof obj.max_score !== 'undefined') m = Number(obj.max_score) || 0;
+              if (m === 0 && Array.isArray(obj.tests) && obj.tests.length) {
+                const sumMax = obj.tests.reduce((acc, t) => acc + (Number(t.max_score) || 0), 0);
+                if (sumMax > 0) m = sumMax;
+              }
+            }
+            return { p, m };
+          }
+
+          function isPass(obj) {
+            if (!obj || typeof obj !== 'object') return false;
+            const { p, m } = getPoints(obj);
+            if (m > 0) return p >= m;
+
+            if (typeof obj.status === 'string') return /pass/i.test(obj.status);
+            if (typeof obj.passed === 'boolean') return obj.passed;
+
+            if (Array.isArray(obj.tests) && obj.tests.length) {
+              return obj.tests.every(t => /pass/i.test(String(t.status ?? t.outcome ?? t.result ?? '')));
+            }
+            return false;
+          }
+
+          const items = [
+            { key:'R_REQUIRED',  label:'Exports exist' },
+            { key:'R_SELECTION', label:'Selection logic works' },
+            { key:'R_SMALL',     label:'Child prompt/alert correct' },
+            { key:'R_ADULT',     label:'Adult prompt/alert correct' },
+            { key:'R_INVALID',   label:'Invalid input handled' }
           ];
 
-          const checkIcon = ok => (ok ? '✅' : '❌');
+          let passed = 0;
+          const lines = ['# Unit 8.3 Autograder Summary', ''];
 
-          const out = [];
-          out.push('# Unit 8.3 Autograder Summary');
-          out.push(`**Passed:** ${passed}/${total}  ·  **Failed:** ${failed}`);
-
-          if (total === 0 || runtimeErrSuites > 0) {
-            out.push('');
-            out.push('> ⚠️ No tests ran. This usually means required files were not found (e.g., index.html).');
+          for (const it of items) {
+            const raw = process.env[it.key] || '';
+            const obj = parseResult(raw);
+            const ok  = isPass(obj);
+            const { p, m } = getPoints(obj);
+            if (ok) passed++;
+            const suffix = (m > 0) ? ` (${p}/${m})` : '';
+            lines.push(`${ok ? '✅' : '❌'} ${it.label}${suffix}`);
           }
 
-          out.push('');
-          out.push('## What you got right / need to fix');
+          lines.splice(1, 0, `**Passed: ${passed}/${items.length}**`, '');
+          const md = lines.join('\n');
 
-          for (const {label, keyword, hint} of checks) {
-            const ok = passedByKeyword(keyword);
-            out.push(`${checkIcon(ok)} ${label}`);
-            if (!ok) out.push(`   - Hint: ${hint}`);
-          }
-
-          out.push('');
-          out.push('### Reminders');
-          out.push('- Use an input with id **age** and a button that calls `calculate()`.');
-          out.push('- Display the result in an element with id **priceOutput**.');
-          out.push('- Brackets: 0–12 → $7, 13–17 → $12, 18–64 → $20, 65+ → $12.');
-
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n'));
-          NODE
-
-      - name: Set job status from test results
-        if: always()
-        run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const r = JSON.parse(fs.readFileSync('jest-results.json','utf8'));
-          const total  = r.numTotalTests ?? 0;
-          const failed = r.numFailedTests ?? 0;
-          const runtimeErrSuites = r.numRuntimeErrorTestSuites ?? 0;
-
-          if (failed > 0 || runtimeErrSuites > 0 || total === 0) {
-            console.error('Failing job: failedTests=' + failed + ', runtimeErrorSuites=' + runtimeErrSuites + ', totalTests=' + total);
-            process.exit(1);
-          } else {
-            console.log('All tests passed: failedTests=' + failed + ', runtimeErrorSuites=' + runtimeErrSuites + ', totalTests=' + total);
-            process.exit(0);
+          console.log(md);
+          if (process.env.GITHUB_STEP_SUMMARY) {
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
           }
           NODE
+
+      # === Report to GitHub Classroom (unchanged; uses the same runners) ===
+      - name: Autograding Reporter
+        uses: classroom-resources/autograding-grading-reporter@v1
+        env:
+          T_REQUIRED_RESULTS:  ${{ steps.t_required.outputs.result }}
+          T_SELECTION_RESULTS: ${{ steps.t_selection.outputs.result }}
+          T_SMALL_RESULTS:     ${{ steps.t_small.outputs.result }}
+          T_ADULT_RESULTS:     ${{ steps.t_adult.outputs.result }}
+          T_INVALID_RESULTS:   ${{ steps.t_invalid.outputs.result }}
+        with:
+          runners: t_required,t_selection,t_small,t_adult,t_invalid
+          token: ${{ github.token }}
