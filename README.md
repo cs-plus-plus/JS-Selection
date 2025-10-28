@@ -1,96 +1,84 @@
-# Unit 8.3 – Selection & Logic: Movie Ticket Price Calculator 🎬
+# Unit 8.3 – Selection
 
-## Overview
-In this project, you will write a JavaScript program that calculates **movie ticket prices** based on the user’s age.  
-You will use **iteration and conditional logic** to determine which price category applies and display the result on the webpage.
+## Crash Course: Selection in JavaScript
+Selection means your program *chooses* a path based on conditions.
 
----
+```js
+// Relational operators:   <  <=  >  >=  ===  !==
+// Logical operators:      && (and)    || (or)    ! (not)
 
-## Learning Goals
-By the end of this lesson, you should be able to:
-- Use variables and conditional logic to implement decision-making in JavaScript.
-- Capture user input from a text field using `document.getElementById()`.
-- Update the DOM dynamically to display results.
-
----
-
-## Instructions
-
-### 1. Create your HTML file
-Include the following elements in your `index.html`:
-
-```html
-<input id="age" type="number" placeholder="Enter your age">
-<button onclick="calculate()">Check Ticket Price</button>
-<p id="priceOutput"></p>
-```
-
-### 2. Create your JavaScript file (`script.js`)
-Your code should define a function named `calculate()` that reads the age from the input, determines the correct ticket price, and displays it.
-
-```javascript
-function calculate() {
-  // your code here
+if (age < 13) {
+  // Child
+} else if (age <= 17) {
+  // Teen
+} else {
+  // Adult or older
 }
 ```
 
----
-
-## Ticket Price Rules
-
-| Age Range | Ticket Type | Price |
-|------------|--------------|--------|
-| 0–12 | Child | $7 |
-| 13–17 | Student | $12 |
-| 18–64 | Adult | $20 |
-| 65+ | Senior | $12 |
+**Tips**
+- Convert prompt input to a number: `const age = Number(prompt("Age?"));`
+- Guard against bad input: `Number.isFinite(age) && age >= 0`
+- Only use `prompt(...)` and `alert(...)` for I/O (no HTML/DOM).
 
 ---
 
-## How It Works
-1. The user enters their **age** in the input field.
-2. When the **button** is clicked, your program calls the `calculate()` function.
-3. The function checks the input against the price ranges and prints the correct **ticket price** inside the `<p id="priceOutput"></p>` element.
+## Your Task
+Create a file named **`script.js`** that implements:
+
+1) **Pure function** (deterministic; no prompts/alerts):
+```js
+function ticketPrice(age) {
+  // returns a Number: 7, 12, 20 (see rules below)
+}
+```
+
+2) **Runner function** (does prompts/alerts):
+```js
+function start() {
+  // 1) ask for age via prompt
+  // 2) validate
+  // 3) compute price with ticketPrice(age)
+  // 4) alert a friendly message (see format)
+}
+```
+
+3) **Exports for Node testing** (required):
+```js
+module.exports = { ticketPrice, start };
+```
+
+### Price Rules
+| Age | Category | Price |
+|---|---|---|
+| 0–12 | Child | \$7 |
+| 13–17 | Student | \$12 |
+| 18–64 | Adult | \$20 |
+| 65+ | Senior | \$12 |
+
+### Alert Message Format
+Use one of these exact forms (the grader matches flexibly, but keep it tidy):
+- `Child: $7`
+- `Student: $12`
+- `Adult: $20`
+- `Senior: $12`
+- For invalid input: `Invalid input`
 
 ---
 
-## Assessment Criteria
-
-| Criteria | Description | Points |
-|-----------|--------------|--------|
-| HTML Setup | Includes input with `id="age"` and output element with `id="priceOutput"` | 20 |
-| JS Functionality | Implements `calculate()` correctly using conditional statements | 40 |
-| Output Accuracy | Displays correct prices for all age groups | 30 |
-| Code Clarity | Proper indentation, comments, and readability | 10 |
+## Examples
+- Input: `5` → Alert: `Child: $7`
+- Input: `35` → Alert: `Adult: $20`
+- Input: `abc` or `-1` → Alert: `Invalid input`
 
 ---
 
-## Common Mistakes
-1. Forgetting to convert the input value to a number using `Number()`.
-2. Not assigning `id` attributes correctly in HTML.
-3. Printing output to the console instead of the webpage.
-4. Missing `calculate()` definition or incorrect function name.
+## How You’ll Be Graded
+The autograder will:
+- Verify `script.js` exists and **exports** `{ ticketPrice, start }`
+- Check selection logic on multiple ages
+- Stub `prompt` with sample inputs and verify the **alert** messages
+- Publish a **Summary** to the Actions Summary tab
+- Report scores back to GitHub Classroom
 
----
-
-## Example Output
-
-| Input (Age) | Expected Output |
-|--------------|----------------|
-| 5 | `$7` |
-| 15 | `$12` |
-| 35 | `$20` |
-| 70 | `$12` |
-
----
-
-## Unit Connection
-- **Unit 8.3 – Iteration** introduces using loops and conditions to automate repetitive logic.
-- This lab focuses on using *if–else* structures to apply different rules for different input cases.
-- This lays the groundwork for **more complex iteration problems**, such as validating multiple inputs or processing lists of data.
-
----
-
-## Submission
-Commit and push your work to your assigned GitHub Classroom repository.  
-Your instructor’s autograder will test your project automatically.
+> **Important:** No DOM or console output; only `prompt` and `alert`.
