@@ -1,84 +1,82 @@
-# Unit 8.3 – Selection
+# Unit 8.3 — Selection
 
-## Crash Course: Selection in JavaScript
-Selection means your program *chooses* a path based on conditions.
+This mini‑lab is a crash course on **selection** using plain JavaScript with **one `prompt()`** for age and **one `alert()`** for the result. **No HTML form elements** and **no DOM APIs** are allowed—everything happens when the page loads.
+
+---
+
+## Crash Course: Selection (If / Else If / Else)
+
+Selection lets your program choose a path based on conditions.
 
 ```js
-// Relational operators:   <  <=  >  >=  ===  !==
-// Logical operators:      && (and)    || (or)    ! (not)
-
-if (age < 13) {
-  // Child
-} else if (age <= 17) {
-  // Teen
+if (conditionA) {
+  // run only when conditionA is true
+} else if (conditionB) {
+  // run when A is false and B is true
 } else {
-  // Adult or older
+  // run when none of the above were true
 }
 ```
 
-**Tips**
-- Convert prompt input to a number: `const age = Number(prompt("Age?"));`
-- Guard against bad input: `Number.isFinite(age) && age >= 0`
-- Only use `prompt(...)` and `alert(...)` for I/O (no HTML/DOM).
+Common patterns you’ll use:
+
+- **Relational operators**: `<, <=, >, >=, ===, !==`
+- **Logical operators**: `&&` (“and”), `||` (“or”), `!` (“not”)
+- **Boundary checks** (e.g., age bands):
+  - `age <= 12` (Child)
+  - `age >= 13 && age <= 17` (Teen)
+  - `age >= 18 && age <= 64` (Adult)
+  - `age >= 65` (Senior)
+
+Validate input up front (NaN or negative numbers are **invalid**).
 
 ---
 
-## Your Task
-Create a file named **`script.js`** that implements:
+## Task
 
-1) **Pure function** (deterministic; no prompts/alerts):
-```js
-function ticketPrice(age) {
-  // returns a Number: 7, 12, 20 (see rules below)
-}
-```
+When the page loads:
 
-2) **Runner function** (does prompts/alerts):
-```js
-function start() {
-  // 1) ask for age via prompt
-  // 2) validate
-  // 3) compute price with ticketPrice(age)
-  // 4) alert a friendly message (see format)
-}
-```
+1. Ask once: `prompt("Enter your age:")`
+2. Parse and validate the input:
+   - If the value is missing, not a number, or `< 0` → `alert("Invalid input")`
+3. Otherwise, compute ticket pricing and show the category label:
+   - **Child (0–12)** → `$7`
+   - **Teen (13–17)** → `$12`
+   - **Adult (18–64)** → `$20`
+   - **Senior (65+)** → `$12`
+4. Alert **exactly one** message like:  
+   - `Child: $7`, `Teen: $12`, `Adult: $20`, `Senior: $12`
 
-3) **Exports for Node testing** (required):
-```js
-module.exports = { ticketPrice, start };
-```
+### Absolutely do NOT
 
-### Price Rules
-| Age | Category | Price |
-|---|---|---|
-| 0–12 | Child | \$7 |
-| 13–17 | Student | \$12 |
-| 18–64 | Adult | \$20 |
-| 65+ | Senior | \$12 |
-
-### Alert Message Format
-Use one of these exact forms (the grader matches flexibly, but keep it tidy):
-- `Child: $7`
-- `Student: $12`
-- `Adult: $20`
-- `Senior: $12`
-- For invalid input: `Invalid input`
+- Use any HTML forms, inputs, buttons, `document.getElementById`, `querySelector`, or other DOM APIs.
+- Call `prompt()` more than once.
+- Export functions or use `module.exports` (the script just runs immediately).
 
 ---
 
-## Examples
-- Input: `5` → Alert: `Child: $7`
-- Input: `35` → Alert: `Adult: $20`
-- Input: `abc` or `-1` → Alert: `Invalid input`
+## Starter Files (expected names)
+
+- `index.html` — includes `<script src="script.js"></script>`
+- `script.js` — contains your on‑load logic (no functions/exports required)
+
+> The autograder **requires** the file name `script.js` at repo root.
 
 ---
 
-## How You’ll Be Graded
-The autograder will:
-- Verify `script.js` exists and **exports** `{ ticketPrice, start }`
-- Check selection logic on multiple ages
-- Stub `prompt` with sample inputs and verify the **alert** messages
-- Publish a **Summary** to the Actions Summary tab
-- Report scores back to GitHub Classroom
+## How You’ll Be Graded (GitHub Classroom)
 
-> **Important:** No DOM or console output; only `prompt` and `alert`.
+The workflow runs **Jest** in a Node environment. Each test run **mocks** `prompt` and `alert`, then `require`s `script.js` so your code executes immediately. If your script uses any DOM APIs (`document`, `getElementById`, etc.), it will throw in Node and the test will fail.
+
+### Tests
+
+- **Required run** — script loads, calls `prompt()` once, and `alert()` once (no DOM).
+- **Child** — age `5` → `Child: $7`
+- **Teen** — age `16` → `Teen: $12`
+- **Adult** — age `35` → `Adult: $20`
+- **Senior** — age `70` → `Senior: $12`
+- **Invalid** — `abc`, empty, whitespace, `-1`, or `null` → alerts “Invalid input”
+- **Boundaries** — `0,12` (Child), `13,17` (Teen), `18,64` (Adult), `65` (Senior)
+- **Single prompt** — ensures you didn’t prompt multiple times
+
+A summary is written to the job summary with ✅/❌ per check and points like `(15/15)` based on the *actual* grader outputs.
