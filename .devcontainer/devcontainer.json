@@ -4,7 +4,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-vscode.live-server"        // Microsoft Live Preview
+        "ms-vscode.live-server"
       ],
       "settings": {
         "livePreview.server.keepAlive": true,

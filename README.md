@@ -1,290 +1,217 @@
-# CS++ JavaScript — Lesson 8.3: Selection
+# CS++ JavaScript — Selection & Conditionals
 
-> **Lesson 8.3** | 100 Points | 5 Autograded Tests
+> **Unit 8.3** | 100 Points | 9 Automated Tests
 
-In this assignment you will write a ticket pricing program using `if`, `else if`, and `else` statements. Your code runs immediately when the page loads — no buttons, no DOM manipulation. Just one `prompt()` for input and one `alert()` for output.
+In this assignment you will learn how to make decisions in your code using **if/else if/else** statements. Your program will check conditions and run different code depending on the result.
 
 ---
 
 ## Table of Contents
 
-1. [Concepts You Need](#concepts-you-need)
-2. [Project Overview](#project-overview)
-3. [Exact Requirements](#exact-requirements)
-4. [File Structure](#file-structure)
-5. [Autograding](#autograding)
-6. [Try It Yourself — Practice Examples](#try-it-yourself--practice-examples)
-7. [Tips for Success](#tips-for-success)
-8. [FAQ](#faq)
+1. [Comparison Operators](#comparison-operators)
+2. [if Statements](#if-statements)
+3. [if/else Statements](#ifelse-statements)
+4. [if/else if/else Chains](#ifelse-ifelse-chains)
+5. [Logical Operators](#logical-operators)
+6. [Input Validation](#input-validation)
+7. [parseInt() vs parseFloat()](#parseint-vs-parsefloat)
+8. [Assignment](#assignment)
+9. [Scoring Rubric](#scoring-rubric)
+10. [Tips for Success](#tips-for-success)
+11. [FAQ](#faq)
 
 ---
 
-## Concepts You Need
+## Comparison Operators
 
-### If / Else If / Else
-
-Selection lets your program choose different paths based on conditions:
-
-```javascript
-let temperature = 85;
-
-if (temperature >= 90) {
-    console.log("It's hot!");
-} else if (temperature >= 70) {
-    console.log("It's warm.");    // this runs because 85 >= 70
-} else {
-    console.log("It's cool.");
-}
-```
-
-Only **one** block runs — JavaScript checks conditions from top to bottom and stops at the first one that is true.
-
-### Comparison Operators
+Comparison operators compare two values and return `true` or `false`:
 
 | Operator | Meaning | Example | Result |
 |----------|---------|---------|--------|
 | `===` | Strict equals | `5 === 5` | `true` |
-| `!==` | Not equals | `5 !== 3` | `true` |
+| `!==` | Strict not equals | `5 !== 3` | `true` |
 | `<` | Less than | `3 < 5` | `true` |
+| `>` | Greater than | `5 > 3` | `true` |
 | `<=` | Less than or equal | `5 <= 5` | `true` |
-| `>` | Greater than | `7 > 3` | `true` |
-| `>=` | Greater than or equal | `10 >= 10` | `true` |
+| `>=` | Greater than or equal | `6 >= 5` | `true` |
 
-> Always use `===` (strict equality), not `==`. Triple equals checks both value AND type.
+### Why === instead of ==?
 
-### Logical Operators
-
-Combine multiple conditions:
+Always use `===` (strict equality) instead of `==` (loose equality). Loose equality does type conversion, which can cause bugs:
 
 ```javascript
-let age = 16;
+5 == "5"   // true — loose equality converts types (BAD)
+5 === "5"  // false — strict equality checks type too (GOOD)
+```
 
-// AND — both must be true
-if (age >= 13 && age <= 17) {
-    console.log("Teen");
-}
+**The autograder checks that your code uses `===`.**
 
-// OR — at least one must be true
-if (age < 5 || age > 65) {
-    console.log("Discount applies");
-}
+---
 
-// NOT — flips true/false
-if (!isNaN(age)) {
-    console.log("Valid number");
+## if Statements
+
+An `if` statement runs code only when a condition is `true`:
+
+```javascript
+let temperature = 95;
+if (temperature > 90) {
+  alert("It's hot outside!");
 }
 ```
 
-### parseInt() and isNaN()
+---
 
-`parseInt()` converts a string to a whole number. `isNaN()` checks if a value is not a number.
+## if/else Statements
 
-```javascript
-let input = "42";
-let num = parseInt(input);   // 42
-
-parseInt("hello");  // NaN (not a number)
-parseInt("");       // NaN
-parseInt("3.7");    // 3 (drops the decimal)
-
-isNaN("hello");     // true — not a valid number
-isNaN("42");        // false — it is a valid number
-isNaN(42);          // false
-```
-
-### Boundary Checking
-
-When categorizing values into ranges, think carefully about where one range ends and the next begins:
+Add `else` to run code when the condition is `false`:
 
 ```javascript
-// Age ranges with no gaps and no overlaps:
-// 0-12: Child
-// 13-17: Teen
-// 18-64: Adult
-// 65+: Senior
-
-if (age <= 12) {
-    // Child
-} else if (age <= 17) {
-    // Teen (we already know age > 12 from the first check)
-} else if (age <= 64) {
-    // Adult
+let age = 15;
+if (age >= 18) {
+  alert("You can vote");
 } else {
-    // Senior (65 and above)
+  alert("Too young to vote");
 }
 ```
 
 ---
 
-## Project Overview
+## if/else if/else Chains
 
-When your page loads, `script.js` runs immediately and does the following:
+When you have **multiple conditions**, chain them with `else if`:
 
-1. Asks the user for their age using `prompt()`
-2. Validates the input
-3. Categorizes the age into a ticket pricing tier
-4. Shows the result using `alert()`
-
-There are **no buttons**, **no HTML forms**, and **no DOM manipulation** in this assignment. Everything runs on page load.
-
----
-
-## Exact Requirements
-
-### Input
-Call `prompt()` **exactly once** with the text: `Enter your age:`
-
-### Validation
-If the input is any of the following, alert exactly `Invalid input`:
-- Empty string or whitespace
-- Not a number (letters, symbols)
-- A negative number
-- A decimal number (like `17.5`)
-
-### Ticket Pricing Tiers
-
-| Age Range | Category | Alert Text (exact) |
-|-----------|----------|-------------------|
-| 0–12 | Child | `Child: $7` |
-| 13–17 | Teen | `Teen: $12` |
-| 18–64 | Adult | `Adult: $20` |
-| 65+ | Senior | `Senior: $12` |
-
-### Rules
-- Call `prompt()` exactly **once**
-- Call `alert()` exactly **once**
-- Do NOT use any DOM APIs (`document.getElementById`, `querySelector`, etc.)
-- Do NOT export functions or use `module.exports`
-- Your code runs immediately at the top level of `script.js` — no function wrappers needed
-
----
-
-## File Structure
-
-```
-JS-Selection/
-├── index.html              <-- Loads script.js (provided)
-├── script.js               <-- YOUR CODE GOES HERE
-└── .github/
-    └── workflows/
-        └── classroom.yml   <-- Autograding tests (DO NOT MODIFY)
-```
-
-**Edit only `script.js`.** Write all your code at the top level so it runs when the file loads.
-
----
-
-## Autograding
-
-When you push your code, GitHub Actions runs these tests:
-
-| Test | Input | Expected Alert | Points |
-|------|-------|---------------|--------|
-| Invalid input | `abc`, `""`, `" "`, `-1`, `null` | `Invalid input` | 20 |
-| Child | `5` | `Child: $7` | 20 |
-| Teen | `13`, `17` | `Teen: $12` | 20 |
-| Adult | `18`, `35`, `64` | `Adult: $20` | 20 |
-| Senior | `65`, `80` | `Senior: $12` | 20 |
-
-**Total: 100 points**
-
-The tests mock `prompt()` to return specific values and check that `alert()` is called with the exact expected string.
-
----
-
-## Try It Yourself — Practice Examples
-
-Create a file called `practice.js` in your Codespace. Run it with `node practice.js`.
-
-**Example 1 — Basic if/else:**
 ```javascript
-// practice.js — basic selection
-let grade = 85;
-
-if (grade >= 90) {
-    console.log("A");
-} else if (grade >= 80) {
-    console.log("B");   // this runs
-} else if (grade >= 70) {
-    console.log("C");
+let score = 85;
+if (score >= 90) {
+  alert("A");
+} else if (score >= 80) {
+  alert("B");
+} else if (score >= 70) {
+  alert("C");
 } else {
-    console.log("F");
+  alert("F");
 }
 ```
 
-**Example 2 — Input validation:**
+**Order matters!** Conditions are checked top to bottom. The first one that is `true` runs, and the rest are skipped.
+
+---
+
+## Logical Operators
+
+Combine conditions using logical operators:
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `&&` | AND — both must be true | `age >= 13 && age <= 17` |
+| `\|\|` | OR — at least one must be true | `day === "Sat" \|\| day === "Sun"` |
+| `!` | NOT — flips true to false | `!isNaN(num)` |
+
+---
+
+## Input Validation
+
+Always check user input before using it. Users might type letters when you expect numbers, or leave the input empty.
+
 ```javascript
-// practice.js — checking for valid input
-let inputs = ["42", "hello", "", "-5", "17.5", null];
-
-for (let input of inputs) {
-    let num = parseInt(input);
-    if (input === null || input.trim() === "" || isNaN(num) || num < 0 || num !== parseFloat(input)) {
-        console.log(input, "=> Invalid input");
-    } else {
-        console.log(input, "=> Valid, age is", num);
-    }
+let input = prompt("Enter a number");
+let num = parseInt(input);
+if (isNaN(num)) {
+  alert("That's not a number!");
 }
 ```
 
-**Example 3 — Ticket pricing logic:**
-```javascript
-// practice.js — test all age categories
-let testAges = [0, 5, 12, 13, 17, 18, 35, 64, 65, 80];
+`isNaN(num)` returns `true` if `num` is **not a number** — this catches empty strings, letters, and other invalid input.
 
-for (let age of testAges) {
-    let result;
-    if (age <= 12) {
-        result = "Child: $7";
-    } else if (age <= 17) {
-        result = "Teen: $12";
-    } else if (age <= 64) {
-        result = "Adult: $20";
-    } else {
-        result = "Senior: $12";
-    }
-    console.log("Age", age, "=>", result);
-}
-// Output:
-// Age 0 => Child: $7
-// Age 5 => Child: $7
-// Age 12 => Child: $7
-// Age 13 => Teen: $12
-// ...
-```
+---
+
+## parseInt() vs parseFloat()
+
+- `parseInt("42")` → `42` — converts to a whole number
+- `parseInt("42.7")` → `42` — drops the decimal part
+- `parseFloat("42.7")` → `42.7` — keeps the decimal part
+
+For things like **age** or **count**, use `parseInt()` because they should be whole numbers.
+
+---
+
+## Assignment
+
+Complete the two functions in `script.js`. Each function is triggered by a button in `index.html`.
+
+### Warm-Up: checkNumber() — 15 points
+
+Write a function that:
+1. Prompts for a number
+2. If the input is not a number, alerts exactly: `Invalid input`
+3. If the number is greater than 0, alerts exactly: `Positive`
+4. If the number is less than 0, alerts exactly: `Negative`
+5. If the number is exactly 0, alerts exactly: `Zero`
+
+### ticketPrice() — 75 points
+
+Write a function that determines a ticket price based on age:
+
+| Age Range | Category | Price | Alert Format |
+|-----------|----------|-------|-------------|
+| 0–12 | Child | $7 | `Child: $7` |
+| 13–17 | Teen | $12 | `Teen: $12` |
+| 18–64 | Adult | $20 | `Adult: $20` |
+| 65+ | Senior | $12 | `Senior: $12` |
+
+If the input is not a number or is negative, alert exactly: `Invalid input`
+
+### Code Quality — 10 points
+
+- **Uses `===`** — strict equality operator (5 points)
+- **Uses `parseInt()`** — to convert age input to a whole number (5 points)
+
+---
+
+## Scoring Rubric
+
+| # | Test | Points | What the autograder checks |
+|---|------|--------|---------------------------|
+| 1 | checkNumber() — positive | 5 | Input "5" → alerts "Positive" |
+| 2 | checkNumber() — negative | 5 | Input "-3" → alerts "Negative" |
+| 3 | checkNumber() — zero | 5 | Input "0" → alerts "Zero" |
+| 4 | Uses === operator | 5 | Source code contains `===` |
+| 5 | Uses parseInt() | 5 | Source code contains `parseInt(` |
+| 6 | Invalid input handling | 15 | "abc", "", "-1", null → "Invalid input" |
+| 7 | Child (0–12) → $7 | 20 | Ages 0, 5, 12 → "Child: $7" |
+| 8 | Teen (13–17) → $12 | 15 | Ages 13, 17 → "Teen: $12" |
+| 9 | Adult (18–64) → $20 | 10 | Ages 18, 35, 64 → "Adult: $20" |
+| 10 | Senior (65+) → $12 | 15 | Ages 65, 80 → "Senior: $12" |
+| | **Total** | **100** | |
 
 ---
 
 ## Tips for Success
 
-1. Use `parseInt()`, not `parseFloat()` — this assignment works with whole numbers only
-2. Check for invalid input **before** checking age ranges
-3. Remember that `parseInt("17.5")` returns `17`, but the input `"17.5"` should be treated as invalid (it is not a whole age)
-4. Test boundary values: 0, 12, 13, 17, 18, 64, 65
-5. Make sure you only call `prompt()` once and `alert()` once
-6. Do not wrap your code in a function — it should run immediately when `script.js` loads
+1. **Start with checkNumber()** — it's simpler and uses the same if/else pattern
+2. **Handle invalid input first** — check for bad input at the top of your function, before checking categories
+3. **Use `return` after invalid input** — this exits the function early so the rest of the code doesn't run
+4. **Check boundaries carefully** — age 12 should be Child, age 13 should be Teen. Off-by-one errors are the most common bug
+5. **Use `<=` for range checking** — `if (age <= 12)` followed by `else if (age <= 17)` naturally creates non-overlapping ranges
 
 ---
 
 ## FAQ
 
-**Q: Why can't I use document.getElementById or other DOM APIs?**
-This assignment tests pure JavaScript logic without the browser DOM. The autograder runs your code in Node.js, which does not have a DOM. If you use DOM APIs, your code will crash and all tests will fail.
+**Q: Why does the order of my if/else if matter?**
+Conditions are checked top to bottom. If you check `age <= 64` before `age <= 12`, then a 5-year-old would match `age <= 64` first and get the wrong price.
 
-**Q: How do I handle decimal input like "17.5"?**
-Compare `parseInt(input)` with `parseFloat(input)`. If they are different, the input has a decimal and should be treated as invalid. Alternatively, check if the input contains a `.` character.
+**Q: Why use `return` after invalid input?**
+Without `return`, the function continues running. The age categories might still match and show a wrong price. `return` exits the function immediately.
 
-**Q: My code works in the browser but fails the tests.**
-Make sure you are not using any DOM APIs. Also check that your alert text matches exactly — `"Child: $7"` is not the same as `"Child:$7"` (missing space) or `"child: $7"` (wrong case).
+**Q: Should I use `parseInt()` or `parseFloat()` for age?**
+Use `parseInt()`. Ages are whole numbers — nobody is 12.5 years old (for ticket pricing purposes).
 
-**Q: Do I need to handle age 0?**
-Yes. Age 0 is a valid input and falls in the Child category (0-12).
-
-**Q: What if the user clicks Cancel on the prompt?**
-When the user clicks Cancel, `prompt()` returns `null`. This should be treated as invalid input.
+**Q: Why does the test check for `===` in my code?**
+Strict equality `===` is a best practice in JavaScript. It prevents subtle bugs caused by type coercion. We want you to develop good habits from the start.
 
 ---
 
-View all assignments and scoring breakdowns at [csplusplus.com/js-tests](https://csplusplus.com/js-tests)
+View all assignments at [csplusplus.com/js-tests](https://csplusplus.com/js-tests)
 
 *CS++ — AP Computer Science Principles — [csplusplus.com](https://csplusplus.com)*

@@ -8,6 +8,7 @@ on:
 jobs:
   autograde:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -16,16 +17,16 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install test deps
+      - name: Install Jest
         run: |
           npm init -y >/dev/null 2>&1 || true
-          npm install --save-dev jest@29 jest-environment-jsdom@29
+          npm install --save-dev jest@29
 
-      - name: Write jest config (use jsdom)
+      - name: Write jest config
         run: |
           cat > jest.config.cjs <<'EOF'
           module.exports = {
-            testEnvironment: 'jsdom',
+            testEnvironment: 'node',
             testMatch: ['**/__tests__/**/*.test.cjs']
           };
           EOF
@@ -33,184 +34,250 @@ jobs:
       - name: Write tests
         run: |
           mkdir -p __tests__
-          cat > __tests__/selection-8_3.test.cjs <<'EOF'
-          const fs   = require('fs');
+          cat > __tests__/selection.test.cjs <<'TESTEOF'
+          const fs = require('fs');
           const path = require('path');
+          const vm = require('vm');
 
-          // Execute student's script.js "as if" included by a <script> tag
-          // in a browser page. We stub window.prompt/alert and mirror to globals.
-          function runOnceWith(promptAnswer) {
-            // fresh DOM (not strictly required, but keeps runs clean)
-            document.body.innerHTML = '';
+          const source = fs.readFileSync(path.resolve('script.js'), 'utf8');
 
-            const calls = { prompts: [], alerts: [] };
-            const stubPrompt = (msg='') => { calls.prompts.push(String(msg)); return promptAnswer; };
-            const stubAlert  = (msg='') => { calls.alerts.push(String(msg)); };
-
-            // attach to window and global so both `prompt()` and `window.prompt()` are caught
-            window.prompt = stubPrompt;
-            window.alert  = stubAlert;
-            global.prompt = stubPrompt;
-            global.alert  = stubAlert;
-
-            // load student script as source text and execute in current global scope
-            const code = fs.readFileSync(path.resolve('script.js'), 'utf8');
-            // Run immediately (page-on-load behavior), not via require()
-            // Using Function avoids Node's CommonJS wrapping & preserves global prompt/alert.
-            const fn = new Function(code);
-            fn();
-
-            // cleanup stubs so subsequent runs can't accidentally reuse them
-            delete window.prompt;
-            delete window.alert;
-            delete global.prompt;
-            delete global.alert;
-
-            return calls;
+          function runFunc(funcName, promptValue) {
+            const alerts = [];
+            const sandbox = {
+              prompt: function(msg) { return promptValue; },
+              alert: function(msg) { alerts.push(String(msg)); },
+              console: { log: function(){}, error: function(){}, warn: function(){} },
+              parseInt: parseInt,
+              parseFloat: parseFloat,
+              isNaN: isNaN,
+              NaN: NaN,
+              undefined: undefined,
+              String: String,
+              Number: Number,
+              Math: Math,
+            };
+            vm.createContext(sandbox);
+            vm.runInContext(source, sandbox, { timeout: 5000 });
+            if (typeof sandbox[funcName] === 'function') {
+              sandbox[funcName]();
+            }
+            return alerts;
           }
 
-          function expectExactOnePromptAndAlert(calls) {
-            expect(calls.prompts.length).toBe(1);
-            expect(calls.alerts.length).toBe(1);
-          }
+          describe('Unit 8.3 – Selection & Conditionals', function() {
 
-          describe('Unit 8.3 – Selection via prompt/alert (runs on load, no exports)', () => {
-            test('t_invalid: bad input => exactly one alert "Invalid input"', () => {
-              const bads = ['abc', '', '   ', '-1', null, undefined, '17.5'];
-              for (const ans of bads) {
-                const calls = runOnceWith(ans);
-                expectExactOnePromptAndAlert(calls);
-                expect(/^Invalid input$/i.test(calls.alerts[0])).toBe(true);
+            test('checkNumber positive', function() {
+              let alerts = runFunc('checkNumber', '5');
+              expect(alerts.length).toBeGreaterThanOrEqual(1);
+              expect(alerts[0]).toBe('Positive');
+            });
+
+            test('checkNumber negative', function() {
+              let alerts = runFunc('checkNumber', '-3');
+              expect(alerts.length).toBeGreaterThanOrEqual(1);
+              expect(alerts[0]).toBe('Negative');
+            });
+
+            test('checkNumber zero', function() {
+              let alerts = runFunc('checkNumber', '0');
+              expect(alerts.length).toBeGreaterThanOrEqual(1);
+              expect(alerts[0]).toBe('Zero');
+            });
+
+            test('uses strict equality', function() {
+              expect(source).toMatch(/===/);
+            });
+
+            test('uses parseInt', function() {
+              expect(source).toMatch(/parseInt\s*\(/);
+            });
+
+            test('invalid input handling', function() {
+              let invalids = ['abc', '', '-1', null];
+              for (let i = 0; i < invalids.length; i++) {
+                let alerts = runFunc('ticketPrice', invalids[i]);
+                expect(alerts.length).toBeGreaterThanOrEqual(1);
+                expect(alerts[0]).toBe('Invalid input');
               }
             });
 
-            test('t_child: prompts once; alerts "Child: $7"', () => {
-              const calls = runOnceWith('5');
-              expectExactOnePromptAndAlert(calls);
-              expect(/^Child:\s*\$7$/i.test(calls.alerts[0])).toBe(true);
+            test('child ticket', function() {
+              expect(runFunc('ticketPrice', '0')[0]).toBe('Child: $7');
+              expect(runFunc('ticketPrice', '5')[0]).toBe('Child: $7');
+              expect(runFunc('ticketPrice', '12')[0]).toBe('Child: $7');
             });
 
-            test('t_teen: prompts once; alerts "Teen: $12"', () => {
-              const teenAges = ['13', '17'];
-              for (const a of teenAges) {
-                const calls = runOnceWith(a);
-                expectExactOnePromptAndAlert(calls);
-                expect(/^Teen:\s*\$12$/i.test(calls.alerts[0])).toBe(true);
-              }
+            test('teen ticket', function() {
+              expect(runFunc('ticketPrice', '13')[0]).toBe('Teen: $12');
+              expect(runFunc('ticketPrice', '17')[0]).toBe('Teen: $12');
             });
 
-            test('t_adult: prompts once; alerts "Adult: $20"', () => {
-              const adultAges = ['18', '35', '64'];
-              for (const a of adultAges) {
-                const calls = runOnceWith(a);
-                expectExactOnePromptAndAlert(calls);
-                expect(/^Adult:\s*\$20$/i.test(calls.alerts[0])).toBe(true);
-              }
+            test('adult ticket', function() {
+              expect(runFunc('ticketPrice', '18')[0]).toBe('Adult: $20');
+              expect(runFunc('ticketPrice', '35')[0]).toBe('Adult: $20');
+              expect(runFunc('ticketPrice', '64')[0]).toBe('Adult: $20');
             });
 
-            test('t_senior: prompts once; alerts "Senior: $12"', () => {
-              const seniorAges = ['65', '80'];
-              for (const a of seniorAges) {
-                const calls = runOnceWith(a);
-                expectExactOnePromptAndAlert(calls);
-                expect(/^Senior:\s*\$12$/i.test(calls.alerts[0])).toBe(true);
-              }
+            test('senior ticket', function() {
+              expect(runFunc('ticketPrice', '65')[0]).toBe('Senior: $12');
+              expect(runFunc('ticketPrice', '80')[0]).toBe('Senior: $12');
             });
+
           });
-          EOF
+          TESTEOF
 
-      # --- Individual graded runs ---
-      - id: t_invalid
-        name: invalid input
+      # === Graded steps (sum to 100) ===
+      - id: t_positive
+        name: checkNumber positive
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: invalid input
+          test-name: checkNumber positive
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "t_invalid:"
+          command: npx jest --runInBand --testNamePattern "checkNumber positive$"
           timeout: 60
-          max-score: 20
+          max-score: 5
+
+      - id: t_negative
+        name: checkNumber negative
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: checkNumber negative
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "checkNumber negative$"
+          timeout: 60
+          max-score: 5
+
+      - id: t_zero
+        name: checkNumber zero
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: checkNumber zero
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "checkNumber zero$"
+          timeout: 60
+          max-score: 5
+
+      - id: t_strict_eq
+        name: uses strict equality
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: uses strict equality
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "uses strict equality$"
+          timeout: 60
+          max-score: 5
+
+      - id: t_parseint
+        name: uses parseInt
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: uses parseInt
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "uses parseInt$"
+          timeout: 60
+          max-score: 5
+
+      - id: t_invalid
+        name: invalid input handling
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: invalid input handling
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "invalid input handling$"
+          timeout: 60
+          max-score: 15
 
       - id: t_child
-        name: child $7
+        name: child ticket
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: child $7
+          test-name: child ticket
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "t_child:"
+          command: npx jest --runInBand --testNamePattern "child ticket$"
           timeout: 60
           max-score: 20
 
       - id: t_teen
-        name: teen $12
+        name: teen ticket
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: teen $12
+          test-name: teen ticket
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "t_teen:"
+          command: npx jest --runInBand --testNamePattern "teen ticket$"
           timeout: 60
-          max-score: 20
+          max-score: 15
 
       - id: t_adult
-        name: adult $20
+        name: adult ticket
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: adult $20
+          test-name: adult ticket
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "t_adult:"
+          command: npx jest --runInBand --testNamePattern "adult ticket$"
           timeout: 60
-          max-score: 20
+          max-score: 10
 
       - id: t_senior
-        name: senior $12
+        name: senior ticket
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: senior $12
+          test-name: senior ticket
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "t_senior:"
+          command: npx jest --runInBand --testNamePattern "senior ticket$"
           timeout: 60
-          max-score: 20
+          max-score: 15
 
-      # --- Summary (optional nice-to-have) ---
+      # Summary
       - name: Build summary
-        env:
-          R_INVALID: ${{ steps.t_invalid.outputs.result }}
-          R_CHILD:   ${{ steps.t_child.outputs.result }}
-          R_TEEN:    ${{ steps.t_teen.outputs.result }}
-          R_ADULT:   ${{ steps.t_adult.outputs.result }}
-          R_SENIOR:  ${{ steps.t_senior.outputs.result }}
+        shell: bash
         run: |
+          npx jest --runInBand --json --outputFile=jest-summary.json || true
           node - <<'NODE'
-          const fs = require('fs');
-          function parse(b64){try{return JSON.parse(Buffer.from(b64||'','base64').toString('utf8'))}catch{return{}}}
-          function row(lbl, r){const o=parse(r);return `- ${/pass/i.test(o.status||'')?'✅':'❌'} ${lbl} (${o.totalPoints||0}/${o.maxPoints||0})`}
-          const md = [
-            '# Unit 8.3 Autograder Summary',
-            row('Invalid input', process.env.R_INVALID),
-            row('Child $7',      process.env.R_CHILD),
-            row('Teen $12',      process.env.R_TEEN),
-            row('Adult $20',     process.env.R_ADULT),
-            row('Senior $12',    process.env.R_SENIOR),
-          ].join('\n');
-          console.log(md);
-          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md+'\n');
+          const fs = require("fs");
+          let jr = {};
+          try { jr = JSON.parse(fs.readFileSync("jest-summary.json","utf8")); } catch {}
+          const assertions = (jr.testResults||[]).flatMap(t => t.assertionResults || []);
+          const tests = [
+            { name: "checkNumber positive", pts: 5 },
+            { name: "checkNumber negative", pts: 5 },
+            { name: "checkNumber zero", pts: 5 },
+            { name: "uses strict equality", pts: 5 },
+            { name: "uses parseInt", pts: 5 },
+            { name: "invalid input handling", pts: 15 },
+            { name: "child ticket", pts: 20 },
+            { name: "teen ticket", pts: 15 },
+            { name: "adult ticket", pts: 10 },
+            { name: "senior ticket", pts: 15 },
+          ];
+          let earned = 0;
+          const lines = ["# Unit 8.3 Autograder Summary", ""];
+          for (const t of tests) {
+            const a = assertions.find(x => x.title === t.name);
+            const passed = !!a && a.status === "passed";
+            if (passed) earned += t.pts;
+            lines.push((passed ? "✅" : "❌") + " " + t.name + " (" + t.pts + " pts)");
+          }
+          lines.push("", "**Score: " + earned + "/100**");
+          console.log(lines.join("\n"));
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
           NODE
 
-       # Collect the results from the five graders into job env vars
       - name: Prepare reporter env
         shell: bash
         run: |
-          # IMPORTANT: Reporter expects T_<runner>_RESULTS where <runner> matches
-          # the names you pass in `runners` below (case-insensitive after the T_).
-          echo "T_INVALID_RESULTS=${{ steps.t_invalid.outputs.result }}" >> "$GITHUB_ENV"
-          echo "T_CHILD_RESULTS=${{ steps.t_child.outputs.result }}"     >> "$GITHUB_ENV"
-          echo "T_TEEN_RESULTS=${{ steps.t_teen.outputs.result }}"       >> "$GITHUB_ENV"
-          echo "T_ADULT_RESULTS=${{ steps.t_adult.outputs.result }}"     >> "$GITHUB_ENV"
-          echo "T_SENIOR_RESULTS=${{ steps.t_senior.outputs.result }}"   >> "$GITHUB_ENV"
+          echo "T_POSITIVE_RESULTS=${{ steps.t_positive.outputs.result }}"     >> "$GITHUB_ENV"
+          echo "T_NEGATIVE_RESULTS=${{ steps.t_negative.outputs.result }}"     >> "$GITHUB_ENV"
+          echo "T_ZERO_RESULTS=${{ steps.t_zero.outputs.result }}"             >> "$GITHUB_ENV"
+          echo "T_STRICT_EQ_RESULTS=${{ steps.t_strict_eq.outputs.result }}"   >> "$GITHUB_ENV"
+          echo "T_PARSEINT_RESULTS=${{ steps.t_parseint.outputs.result }}"     >> "$GITHUB_ENV"
+          echo "T_INVALID_RESULTS=${{ steps.t_invalid.outputs.result }}"       >> "$GITHUB_ENV"
+          echo "T_CHILD_RESULTS=${{ steps.t_child.outputs.result }}"           >> "$GITHUB_ENV"
+          echo "T_TEEN_RESULTS=${{ steps.t_teen.outputs.result }}"             >> "$GITHUB_ENV"
+          echo "T_ADULT_RESULTS=${{ steps.t_adult.outputs.result }}"           >> "$GITHUB_ENV"
+          echo "T_SENIOR_RESULTS=${{ steps.t_senior.outputs.result }}"         >> "$GITHUB_ENV"
 
-      # Use a literal, single-quoted, single-line runners string
-      - name: Autograding Reporter
-        uses: classroom-resources/autograding-grading-reporter@d13b5912daf5042ac1b71bc38bdb4a6bcd61d8ca # pin v1 SHA that works
+      - name: Report grades
+        uses: classroom-resources/autograding-grading-reporter@v1
         with:
-          runners: 't_invalid,t_child,t_teen,t_adult,t_senior'
+          runners: 't_positive,t_negative,t_zero,t_strict_eq,t_parseint,t_invalid,t_child,t_teen,t_adult,t_senior'
           token: ${{ github.token }}
-
