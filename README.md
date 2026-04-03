@@ -1,6 +1,6 @@
 # CS++ JavaScript — Selection & Conditionals
 
-> **Unit 8.3** | 100 Points | 9 Automated Tests
+> **Unit 8.3** | 100 Points | 10 Automated Tests
 
 In this assignment you will learn how to make decisions in your code using **if/else if/else** statements. Your program will check conditions and run different code depending on the result.
 

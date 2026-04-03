@@ -84,6 +84,12 @@ jobs:
               expect(alerts[0]).toBe('Zero');
             });
 
+            test('checkNumber invalid input', function() {
+              let alerts = runFunc('checkNumber', 'abc');
+              expect(alerts.length).toBeGreaterThanOrEqual(1);
+              expect(alerts[0]).toBe('Invalid input');
+            });
+
             test('uses strict equality', function() {
               expect(source).toMatch(/===/);
             });
@@ -157,6 +163,16 @@ jobs:
           timeout: 60
           max-score: 5
 
+      - id: t_check_invalid
+        name: checkNumber invalid input
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: checkNumber invalid input
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "checkNumber invalid input$"
+          timeout: 60
+          max-score: 5
+
       - id: t_strict_eq
         name: uses strict equality
         uses: classroom-resources/autograding-command-grader@v1
@@ -185,7 +201,7 @@ jobs:
           setup-command: echo "ready"
           command: npx jest --runInBand --testNamePattern "invalid input handling$"
           timeout: 60
-          max-score: 15
+          max-score: 10
 
       - id: t_child
         name: child ticket
@@ -241,9 +257,10 @@ jobs:
             { name: "checkNumber positive", pts: 5 },
             { name: "checkNumber negative", pts: 5 },
             { name: "checkNumber zero", pts: 5 },
+            { name: "checkNumber invalid input", pts: 5 },
             { name: "uses strict equality", pts: 5 },
             { name: "uses parseInt", pts: 5 },
-            { name: "invalid input handling", pts: 15 },
+            { name: "invalid input handling", pts: 10 },
             { name: "child ticket", pts: 20 },
             { name: "teen ticket", pts: 15 },
             { name: "adult ticket", pts: 10 },
@@ -268,6 +285,7 @@ jobs:
           echo "T_POSITIVE_RESULTS=${{ steps.t_positive.outputs.result }}"     >> "$GITHUB_ENV"
           echo "T_NEGATIVE_RESULTS=${{ steps.t_negative.outputs.result }}"     >> "$GITHUB_ENV"
           echo "T_ZERO_RESULTS=${{ steps.t_zero.outputs.result }}"             >> "$GITHUB_ENV"
+          echo "T_CHECK_INVALID_RESULTS=${{ steps.t_check_invalid.outputs.result }}" >> "$GITHUB_ENV"
           echo "T_STRICT_EQ_RESULTS=${{ steps.t_strict_eq.outputs.result }}"   >> "$GITHUB_ENV"
           echo "T_PARSEINT_RESULTS=${{ steps.t_parseint.outputs.result }}"     >> "$GITHUB_ENV"
           echo "T_INVALID_RESULTS=${{ steps.t_invalid.outputs.result }}"       >> "$GITHUB_ENV"
@@ -279,5 +297,5 @@ jobs:
       - name: Report grades
         uses: classroom-resources/autograding-grading-reporter@v1
         with:
-          runners: 't_positive,t_negative,t_zero,t_strict_eq,t_parseint,t_invalid,t_child,t_teen,t_adult,t_senior'
+          runners: 't_positive,t_negative,t_zero,t_check_invalid,t_strict_eq,t_parseint,t_invalid,t_child,t_teen,t_adult,t_senior'
           token: ${{ github.token }}
