@@ -64,6 +64,16 @@ jobs:
             return alerts;
           }
 
+          // script.js with its comment lines removed. The STEP comments name the
+          // very things these checks look for, so a check of the whole file would
+          // pass on untouched starter code.
+          function codeLines() {
+            return source.split('\n')
+              .map(function(line) { return line.trim(); })
+              .filter(function(line) { return !line.startsWith('//') && !line.startsWith('*'); })
+              .join('\n');
+          }
+
           describe('Unit 8.3 – Selection & Conditionals', function() {
 
             test('checkNumber positive', function() {
@@ -91,11 +101,11 @@ jobs:
             });
 
             test('uses strict equality', function() {
-              expect(source).toMatch(/===/);
+              expect(codeLines()).toMatch(/===/);
             });
 
             test('uses parseInt', function() {
-              expect(source).toMatch(/parseInt\s*\(/);
+              expect(codeLines()).toMatch(/parseInt\s*\(/);
             });
 
             test('invalid input handling', function() {

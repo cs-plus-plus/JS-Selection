@@ -1,6 +1,6 @@
 # CS++ JavaScript — Selection & Conditionals
 
-> **Unit 8.3** | 100 Points | 10 Automated Tests
+> **Unit 8.3** | 100 Points | 11 Automated Tests
 
 In this assignment you will learn how to make decisions in your code using **if/else if/else** statements. Your program will check conditions and run different code depending on the result.
 
@@ -139,7 +139,7 @@ For things like **age** or **count**, use `parseInt()` because they should be wh
 
 Complete the two functions in `script.js`. Each function is triggered by a button in `index.html`.
 
-### Warm-Up: checkNumber() — 15 points
+### Warm-Up: checkNumber() — 20 points
 
 Write a function that:
 1. Prompts for a number
@@ -148,7 +148,7 @@ Write a function that:
 4. If the number is less than 0, alerts exactly: `Negative`
 5. If the number is exactly 0, alerts exactly: `Zero`
 
-### ticketPrice() — 75 points
+### ticketPrice() — 70 points
 
 Write a function that determines a ticket price based on age:
 
@@ -175,13 +175,14 @@ If the input is not a number or is negative, alert exactly: `Invalid input`
 | 1 | checkNumber() — positive | 5 | Input "5" → alerts "Positive" |
 | 2 | checkNumber() — negative | 5 | Input "-3" → alerts "Negative" |
 | 3 | checkNumber() — zero | 5 | Input "0" → alerts "Zero" |
-| 4 | Uses === operator | 5 | Source code contains `===` |
-| 5 | Uses parseInt() | 5 | Source code contains `parseInt(` |
-| 6 | Invalid input handling | 15 | "abc", "", "-1", null → "Invalid input" |
-| 7 | Child (0–12) → $7 | 20 | Ages 0, 5, 12 → "Child: $7" |
-| 8 | Teen (13–17) → $12 | 15 | Ages 13, 17 → "Teen: $12" |
-| 9 | Adult (18–64) → $20 | 10 | Ages 18, 35, 64 → "Adult: $20" |
-| 10 | Senior (65+) → $12 | 15 | Ages 65, 80 → "Senior: $12" |
+| 4 | checkNumber() — invalid input | 5 | Input "abc" → alerts "Invalid input" |
+| 5 | Uses === operator | 5 | Your code (not a comment) contains `===` |
+| 6 | Uses parseInt() | 5 | Your code (not a comment) contains `parseInt(` |
+| 7 | ticketPrice() — invalid input | 10 | "abc", "", "-1", null → "Invalid input" |
+| 8 | Child (0–12) → $7 | 20 | Ages 0, 5, 12 → "Child: $7" |
+| 9 | Teen (13–17) → $12 | 15 | Ages 13, 17 → "Teen: $12" |
+| 10 | Adult (18–64) → $20 | 10 | Ages 18, 35, 64 → "Adult: $20" |
+| 11 | Senior (65+) → $12 | 15 | Ages 65, 80 → "Senior: $12" |
 | | **Total** | **100** | |
 
 ---
@@ -189,8 +190,8 @@ If the input is not a number or is negative, alert exactly: `Invalid input`
 ## Tips for Success
 
 1. **Start with checkNumber()** — it's simpler and uses the same if/else pattern
-2. **Handle invalid input first** — check for bad input at the top of your function, before checking categories
-3. **Use `return` after invalid input** — this exits the function early so the rest of the code doesn't run
+2. **Handle invalid input first** — make it the first condition in your if/else if chain, before the categories
+3. **Use one chain, not separate ifs** — with `else if`, only one branch can run, so an invalid age never also gets a price
 4. **Check boundaries carefully** — age 12 should be Child, age 13 should be Teen. Off-by-one errors are the most common bug
 5. **Use `<=` for range checking** — `if (age <= 12)` followed by `else if (age <= 17)` naturally creates non-overlapping ranges
 
@@ -201,8 +202,8 @@ If the input is not a number or is negative, alert exactly: `Invalid input`
 **Q: Why does the order of my if/else if matter?**
 Conditions are checked top to bottom. If you check `age <= 64` before `age <= 12`, then a 5-year-old would match `age <= 64` first and get the wrong price.
 
-**Q: Why use `return` after invalid input?**
-Without `return`, the function continues running. The age categories might still match and show a wrong price. `return` exits the function immediately.
+**Q: Why put the invalid check first in the chain?**
+An if/else if chain stops at the first true condition. If the invalid check comes first, an invalid age alerts "Invalid input" and none of the price branches run. With separate `if` statements, "-1" could also match a price.
 
 **Q: Should I use `parseInt()` or `parseFloat()` for age?**
 Use `parseInt()`. Ages are whole numbers — nobody is 12.5 years old (for ticket pricing purposes).

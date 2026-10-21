@@ -16,14 +16,15 @@ function checkNumber() {
 
   // STEP 2: Use parseFloat() to convert the string to a number.
 
-  // STEP 3: Check if the input is not a number using isNaN().
-  //         If it is not a number, alert exactly: "Invalid input"
-  //         Then return (exit the function early).
-
-  // STEP 4: Use if/else if/else to check the number:
-  //         If the number is greater than 0, alert exactly: "Positive"
-  //         If the number is less than 0, alert exactly: "Negative"
-  //         If the number is exactly 0, alert exactly: "Zero"
+  // STEP 3: Use ONE if/else if chain, checking in this order:
+  //         If the input is not a number (use isNaN()),
+  //            alert exactly: "Invalid input"
+  //         Else if the number is greater than 0, alert exactly: "Positive"
+  //         Else if the number is less than 0, alert exactly: "Negative"
+  //         Else if the number is exactly 0 (use ===), alert exactly: "Zero"
+  //
+  //         Because the isNaN() check comes first, the other branches
+  //         only run for real numbers, and only one message ever shows.
 
 }
 
@@ -44,21 +45,17 @@ function ticketPrice() {
   // STEP 2: Use parseInt() to convert the string to a whole number.
   //         Ages should be whole numbers, so use parseInt (not parseFloat).
 
-  // STEP 3: Check if the input is invalid.
-  //         Invalid means: isNaN() is true OR the number is negative.
-  //         If invalid, alert exactly: "Invalid input"
-  //         Then return (exit the function early).
-
-  // STEP 4: Use if/else if/else to determine the ticket price.
-  //         Check the age ranges in order:
+  // STEP 3: Use ONE if/else if/else chain, checking in this order:
   //
-  //         If age is 12 or less → alert exactly: "Child: $7"
-  //         If age is 17 or less → alert exactly: "Teen: $12"
-  //         If age is 64 or less → alert exactly: "Adult: $20"
-  //         Otherwise            → alert exactly: "Senior: $12"
+  //         If the age is invalid (isNaN() is true OR the number is
+  //            negative) → alert exactly: "Invalid input"
+  //         Else if age is 12 or less → alert exactly: "Child: $7"
+  //         Else if age is 17 or less → alert exactly: "Teen: $12"
+  //         Else if age is 64 or less → alert exactly: "Adult: $20"
+  //         Else                      → alert exactly: "Senior: $12"
   //
-  //         HINT: Since you already checked for negative numbers
-  //         in STEP 3, you know the age is >= 0 by this point.
+  //         HINT: Because the invalid check comes first, by the time
+  //         you reach "age is 12 or less" you know the age is >= 0.
   //         So checking age <= 12 covers ages 0 through 12.
 
 }
